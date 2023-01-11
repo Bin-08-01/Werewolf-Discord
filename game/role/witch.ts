@@ -8,14 +8,24 @@ class Witch extends Player {
         super(user, id, 'witch', true);
     }
 
-    resurrect(idDead: any) {
-        if (this.resurrection) {
+    checkRes(): boolean{
+        return this.getState() && this.resurrection ? true : false;
+    }
 
+    checkPoison(): boolean{
+        return this.getState() && this.poison ? true : false;
+    }
+
+    resurrect() {
+        if (this.resurrection) {
+            this.resurrection = 0;
         }
     }
 
-    empoison(idPlayer: any) {
-
+    empoison() {
+        if(this.poison){
+            this.poison = 0;
+        }
     }
 }
 
