@@ -17,25 +17,58 @@ export const wolfGameCmd = {
             if (!interaction.isStringSelectMenu()) return;
             const selected = interaction.values[0];
             if(interaction.customId === 'select-by-wolf') {
+                await interaction.reply("Chọn thành công");
                 await interaction.channel.send(`Người chơi bị vote bởi sói là: ${selected}`);
+                await game.setListByWolf(selected);
                 await game.setKillList(selected);
             }
             else if(interaction.customId === 'select-by-witch'){
-                await interaction.channel.send(`Người chơi bị vote bởi phù thuỷ là: ${selected}`);
-                await game.setKillCertain(selected);
+                const witch = await game.findRole('witch');
+                // const check = witch.checkPoison();
+                if(witch?.checkPoison()){
+                    await game.setKillCertain(selected);
+                    await witch.empoison();
+                    // console.log(interaction.message.components[0].components);
+                    await interaction.update({content: "Phù thuỷ chọn người để đầu độc thành công", components: []});
+                    // await interaction.disable(true);
+                    // await interaction.channel.send(`Người chơi bị vote bởi phù thuỷ là: ${selected}`);
+                }
+                else{
+                    await interaction.reply("Bạn đã hết thuốc độc");
+                }
             }
             else if(interaction.customId === 'select-by-guard'){
-                await game.setProtected(selected);
+                const check = await game.setProtected(selected);
+                if(await !check){
+                    await interaction.reply("Người này đã được bảo vệ ở đêm hôm qua, vui lòng chọn người khác");
+                }else{
+                    await interaction.reply("Đã chọn thành công người để bảo vệ đêm nay");
+                }
             }
         });
         client.on(Events.InteractionCreate, async (interaction: any) => {
             if (!interaction.isButton()) return;
             const listChooseKillByWitch = await game?.initSelectOption('witch');
+            const witch = await game.findRole('witch');
             if(interaction.customId==='kill-by-witch'){
-                interaction.reply({content: 'Chọn người bạn muôn đầu độc để giết đêm nay: ', components: [listChooseKillByWitch]});
+                if(witch.checkPoison()) {
+                    interaction.reply({
+                        content: 'Chọn người bạn muôn đầu độc để giết đêm nay: ',
+                        components: [listChooseKillByWitch]
+                    });
+                }else{
+                    interaction.reply("Bạn đã hết bình thuốc độc");
+                }
             }
             else if(interaction.customId === 'revival-by-witch'){
-                game?.setRevList()
+                const witch = await game.findRole('witch');
+                if(await witch.checkRes()) {
+                    const idKilled = game.getKillByWolf();
+                    game.setRevList(idKilled);
+                    witch.resurrect();
+                }else{
+                    await interaction.reply("Bạn đã hết thuốc hồi sinh");
+                }
             }
         });
     }
