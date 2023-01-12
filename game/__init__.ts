@@ -3,6 +3,7 @@ const Seer = require('./role/seer');
 const Villager = require('./role/villagers');
 const Witch = require('./role/witch');
 const Wolf = require('./role/wolf');
+const Player = require('./role/player');
 const {ActionRowBuilder, Events, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle} = require("discord.js");
 
 export class Init {
@@ -13,6 +14,7 @@ export class Init {
     private queueKill: any[] = [];
     private queueKillCertain: any[] = [];
     private queueRev: any[] = [];
+    private killByWolf: string = '';
     bot: any;
     private protect: any;
     client: any;
@@ -23,6 +25,15 @@ export class Init {
         this.client = client
     }
 
+    setKillByWolf(idPlayer: string) {
+        this.killByWolf = idPlayer;
+    }
+
+    getKillByWolf(idPlayer: string): string {
+        return this.killByWolf;
+    }
+
+
     setListPlayer(listAttend: any) {
         this.listAttend = listAttend;
     }
@@ -31,15 +42,15 @@ export class Init {
         await this.bot.reply("Hello, tui gửi từ ma sói");
     }
 
-    setKillCertain(idPlayer: string){
+    setKillCertain(idPlayer: string) {
         this.queueKillCertain.push(idPlayer);
     }
 
-    async setKillList(idPlayer: string){
+    async setKillList(idPlayer: string) {
         await this.queueKill.push(idPlayer);
     }
 
-    async setRevList(idPlayer: string){
+    async setRevList(idPlayer: string) {
         await this.queueRev.push(idPlayer);
     }
 
@@ -61,8 +72,12 @@ export class Init {
     }
 
     async setProtected(protect: string) {
-        console.log("Protected");
-        this.protect = protect;
+        if (protect !== this.protect) {
+            console.log("Protected");
+            this.protect = protect;
+            return true;
+        }
+        return false;
     }
 
     getProtected() {
@@ -70,7 +85,7 @@ export class Init {
     }
 
     async handleKill() {
-        if(this.queueKill.length>0){
+        if (this.queueKill.length > 0) {
             await this.queueKill.forEach((idPlayer: string) => {
                 this.listPlayer.forEach((player: any) => {
                     if (idPlayer === player.getId() && idPlayer !== this.protect) {
@@ -79,10 +94,10 @@ export class Init {
                 })
             })
         }
-        if(this.queueKillCertain.length>0){
+        if (this.queueKillCertain.length > 0) {
             await this.queueKillCertain.forEach((idPlayer: string) => {
                 this.listPlayer.forEach((player: any) => {
-                    if(idPlayer === player.getId()){
+                    if (idPlayer === player.getId()) {
                         player.setState(false);
                     }
                 })
@@ -91,17 +106,17 @@ export class Init {
     }
 
     async handleRev() {
-        await this.queueRev.forEach((j: any) => {
-            this.listPlayer.forEach((k: any) => {
-                if (j === k.getId()) {
-                    k.setState(true);
+        await this.queueRev.forEach((idPlayer: any) => {
+            this.listPlayer.forEach((player: any) => {
+                if (idPlayer === player.getId()) {
+                    player.setState(true);
                 }
             })
         })
     }
 
     setRole = async () => {
-        await this.listAttend.sort( () => Math.random() - 0.5);
+        await this.listAttend.sort(() => Math.random() - 0.5);
         for (let i = 0; i < this.listAttend.length; i++) {
             const each: any = this.listRole[i];
             const player: any = this.listAttend[i];
@@ -123,6 +138,12 @@ export class Init {
                     break;
             }
         }
+        await this.listPlayer.sort(() => Math.random() - 0.5);
+    }
+
+
+    async findRole(role: string) {
+        return await this.listPlayer.find(player => player.role === role);
     }
 
     countGood() {
@@ -135,8 +156,9 @@ export class Init {
         return quan;
     }
 
-    getPlayerById(id: string): any[] {
-        return this.listPlayer.filter(each => each.getId() === id);
+    getPlayerById(id: string): typeof Player {
+        const player = this.listPlayer.filter(each => each.getId() === id);
+        return player[0];
     }
 
     countEvil() {
@@ -149,9 +171,10 @@ export class Init {
         return quan;
     }
 
-    async clear(){
+    async clear() {
         this.queueRev = [];
         this.queueKill = [];
+        this.killByWolf = '';
     }
 
     checkFinish() {
@@ -162,7 +185,7 @@ export class Init {
         return new Promise(resolve => setTimeout(resolve, second));
     }
 
-    initSelectOption = async (agent: string) => {
+    initSelectOption = async (agent: string) => {                               //Initialize selection menu
         const option: any[] = [];
         await this.listPlayer.forEach(each => {
             if (each.getState()) {
@@ -181,22 +204,37 @@ export class Init {
         return row;
     }
 
+    async countDown(second: number = 0, message: any) {                            // Function countdown
+        const msg = await this.bot.channel.send(`${message}: ${second}s`);
+        return new Promise(resolve => {
+            let interval = setInterval(async () => {
+                await msg.edit(`${message}: ${second--}s`);
+                if (second < 0) {
+                    resolve(clearInterval(interval));
+                }
+            }, 1000);
+        })
+    }
+
     async start() {
         while (true) {
             const players = this.listPlayer;
             const listProtected = await this.initSelectOption('guard');
             await this.bot.channel.send({content: 'Bạn muốn chọn ai để bảo vệ đêm nay: ', components: [listProtected]});
-            await this.sleepTime(10000);
-            const playerProtect = await this.getProtected();
-            players[0].protect(playerProtect);
+            // await this.sleepTime(10000);
+            await this.countDown(30, "Thời gian bình chọn còn lại");
 
-            await this.bot.channel.send({content: 'Choose who will die'});
-            const wolfList = this.listPlayer.filter(each => each.getRole() === 'wolf');
-            wolfList.forEach(each => {
-                this.client.users.fetch(each.getId(), false).then(async (user: any) => await user.send("Hello"));
-            })
-            await this.sleepTime(10000);
+            // const playerProtect = await this.getProtected();
+            // players[0].protect(playerProtect);
 
+            await this.bot.channel.send({content: 'Chọn người để giết đêm nay(sói)'});
+            const wolfList = this.listPlayer.filter(each => each.getRole() === 'wolf');  // Find out all players are wolves
+            // wolfList.forEach(each => {
+            //     this.client.users.fetch(each.getId(), false).then(async (user: any) => await user.send("Hello"));
+            // })
+
+            await this.countDown(30, "Thời gian bình chọn còn lại");
+            // await this.sleepTime(10000);
             const buttonWitch = new ActionRowBuilder()
                 .addComponents(
                     new ButtonBuilder()
@@ -208,11 +246,16 @@ export class Init {
                         .setLabel('Save')
                         .setStyle(ButtonStyle.Primary)
                 );
+            // const a = await this.findRole('witch');
+            // this.client.users.fetch('721564631642144861', false).then(async (user: any) => await user.send({content: `${this.getPlayerById('869927501634359357').getName().username} will die, choose 'Rev' or 'Kill Someone'`,
+            //     components: [buttonWitch]}))
+
             await this.bot.channel.send({
-                content: `${this.getPlayerById(playerProtect)[0].getName().username} will die, choose 'Rev' or 'Kill Someone'`,
+                content: `${this.getPlayerById('869927501634359357').getName().username} will die, choose 'Rev' or 'Kill Someone'`,
                 components: [buttonWitch]
             });
-            await this.sleepTime(10000);
+            // await this.sleepTime(10000);
+            await this.countDown(30, "Thời gian bình chọn còn lại");
             await this.handleKill();
             await this.handleRev();
             await this.getListPlayerss();
@@ -223,7 +266,7 @@ export class Init {
     getListPlayerss = async () => {
         let a = '';
         await this.listPlayer.forEach(each => {
-            if(each.getState()){
+            if (each.getState()) {
                 a += each.getName().username + ", role =" + each.getRole() + "\n";
             }
         })
