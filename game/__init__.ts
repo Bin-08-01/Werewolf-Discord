@@ -1,4 +1,4 @@
-import { EmbedBuilder } from "discord.js";
+import {EmbedBuilder} from "discord.js";
 
 const Bodyguard = require('./role/bodyguard');
 const Seer = require('./role/seer');
@@ -12,6 +12,8 @@ export class Init {
     private listAttend: object[] = [];
     private listRole: string[] = ["bodyguard", "witch", "wolf", "wolf", "village", "village",
         "cursed", "hunter", "mayor", "wolf", "diviner", "village"];
+    private listEmoji: string[] = ["😁", "🤪", "😥", "😍", "🤣",
+        "😡", "🥶", "🤢", "😈", "🤖", "🤡", "👽", "☠"];
     private listPlayer: any[] = [];
     private queueKill: any[] = [];
     private queueKillCertain: any[] = [];
@@ -242,7 +244,7 @@ export class Init {
             // await this.client.users.fetch(playerRole.getId(), false)
             //     .then(async (user: any) => await user.send("Bạn là bảo vệ đó, hãy vào để chọn người để bảo vệ nào"));
             await this.bot.channel.send({content: 'Bạn muốn chọn ai để bảo vệ đêm nay: ', components: [listProtected]});
-            await this.countDown(30, "Thời gian bình chọn còn lại");
+            await this.countDown(10, "Thời gian bình chọn còn lại");
 
             //====================Wolf============================
             await this.bot.channel.send({content: 'Chọn người để giết đêm nay(sói)'});
@@ -251,7 +253,7 @@ export class Init {
             //     this.client.users.fetch(each.getId(), false).then(async (user: any) => await user.send("Hello"));
             // })
 
-            await this.countDown(30, "Thời gian bình chọn còn lại");
+            await this.countDown(10, "Thời gian bình chọn còn lại");
 
             //=====================Witch==========================
             const buttonWitch = new ActionRowBuilder()
@@ -274,12 +276,42 @@ export class Init {
                 components: [buttonWitch]
             });
 
-            await this.countDown(30, "Thời gian bình chọn còn lại");
-            await this.handleKill();
-            await this.handleRev();
-            await this.getListPlayerss();
-            await this.clear();
+            await this.countDown(10, "Thời gian bình chọn còn lại");
+            await this.handleKill(); // Handle kill
+            await this.handleRev(); // Rev
+            await this.getListPlayerss(); // Display all players is live
+            await this.clear(); // Reset All List (Kill, Rev)
+            let content: string = "";
+            let emojis: string[] = [];
+
+            //Vote phase of village
+            await this.listPlayer.forEach((each, index) => {
+                if (each.getState()) {
+                    content += `${this.listEmoji[index]}: ${each.getName().username}\n`
+                    emojis.push(this.listEmoji[index])
+                }
+            })
+            const embed = new EmbedBuilder()
+                .setColor(0x0099FF)
+                .setTitle("Chọn người chơi để treo cổ")
+                .setDescription(`${content}`);
+            const voteMsg = await this.bot.channel.send({
+                embeds: [embed],
+                fetchReply: true
+            })
+                .then(async (emb: any) => {
+                    await emojis.forEach((each: string) => {
+                        emb.react(`${each}`);
+                    })
+                });
+
+            //Check vote to kill
+            await voteMsg.awaitReactions({time: 12000})
+                .then(async (collected: any) => {
+                    console.log(collected);
+                })
             await this.countDown(120, "Thời gian thảo luận của dân làng");
+
         }
     }
 
