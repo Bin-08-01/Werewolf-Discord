@@ -1,3 +1,5 @@
+import {EmbedBuilder} from "discord.js";
+
 const Bodyguard = require('./role/bodyguard');
 const Seer = require('./role/seer');
 const Villager = require('./role/villagers');
@@ -10,6 +12,8 @@ export class Init {
     private listAttend: object[] = [];
     private listRole: string[] = ["bodyguard", "witch", "wolf", "wolf", "village", "village",
         "cursed", "hunter", "mayor", "wolf", "diviner", "village"];
+    private listEmoji: string[] = ["😁", "🤪", "😥", "😍", "🤣",
+        "😡", "🥶", "🤢", "😈", "🤖", "🤡", "👽", "☠"];
     private listPlayer: any[] = [];
     private queueKill: any[] = [];
     private queueKillCertain: any[] = [];
@@ -204,13 +208,27 @@ export class Init {
         return row;
     }
 
-    async countDown(second: number = 0, message: any) {                            // Function countdown
-        const msg = await this.bot.channel.send(`${message}: ${second}s`);
+    async countDown(second: number = 0, message: any) {             // Function countdown
+        // const msg = await this.bot.channel.send(`${message}: ${second}s`);
+        const embed = new EmbedBuilder()
+            .setColor(0x0099FF)
+            .setTitle(message)
+            .setDescription(`${message}: ${second}s`);
+        const msg = await this.bot.channel.send({embeds: [embed]});
         return new Promise(resolve => {
             let interval = setInterval(async () => {
-                await msg.edit(`${message}: ${second--}s`);
+                const newEmbed = new EmbedBuilder()
+                    .setColor(0x0099FF)
+                    .setTitle(message)
+                    .setDescription(`${message}: ${second--}s`);
+                await msg.edit({embeds: [newEmbed]});
                 if (second < 0) {
                     resolve(clearInterval(interval));
+                    const endEmbeed = new EmbedBuilder()
+                        .setColor(0xD83C3E)
+                        .setTitle("Hết thời gian !!!")
+                        .setDescription(`Hết thời gian !!!`);
+                    await msg.edit({embeds: [endEmbeed]});
                 }
             }, 1000);
         })
@@ -219,22 +237,25 @@ export class Init {
     async start() {
         while (true) {
             const players = this.listPlayer;
+
+            //===================Bodyguard=======================
             const listProtected = await this.initSelectOption('guard');
+            let playerRole = await this.findRole('bodyguard');
+            // await this.client.users.fetch(playerRole.getId(), false)
+            //     .then(async (user: any) => await user.send("Bạn là bảo vệ đó, hãy vào để chọn người để bảo vệ nào"));
             await this.bot.channel.send({content: 'Bạn muốn chọn ai để bảo vệ đêm nay: ', components: [listProtected]});
-            // await this.sleepTime(10000);
-            await this.countDown(30, "Thời gian bình chọn còn lại");
+            await this.countDown(10, "Thời gian bình chọn còn lại");
 
-            // const playerProtect = await this.getProtected();
-            // players[0].protect(playerProtect);
-
+            //====================Wolf============================
             await this.bot.channel.send({content: 'Chọn người để giết đêm nay(sói)'});
             const wolfList = this.listPlayer.filter(each => each.getRole() === 'wolf');  // Find out all players are wolves
             // wolfList.forEach(each => {
             //     this.client.users.fetch(each.getId(), false).then(async (user: any) => await user.send("Hello"));
             // })
 
-            await this.countDown(30, "Thời gian bình chọn còn lại");
-            // await this.sleepTime(10000);
+            await this.countDown(10, "Thời gian bình chọn còn lại");
+
+            //=====================Witch==========================
             const buttonWitch = new ActionRowBuilder()
                 .addComponents(
                     new ButtonBuilder()
@@ -246,20 +267,51 @@ export class Init {
                         .setLabel('Save')
                         .setStyle(ButtonStyle.Primary)
                 );
-            // const a = await this.findRole('witch');
-            // this.client.users.fetch('721564631642144861', false).then(async (user: any) => await user.send({content: `${this.getPlayerById('869927501634359357').getName().username} will die, choose 'Rev' or 'Kill Someone'`,
-            //     components: [buttonWitch]}))
+            playerRole = await this.findRole('witch');
+            // await this.client.users.fetch(playerRole.getId(), false)
+            //     .then(async (user: any) => await user.send("Bạn là phù thuỷ đó, hãy mau vào làm nhiệm vụ của mình nào !!!"));
 
             await this.bot.channel.send({
-                content: `${this.getPlayerById('869927501634359357').getName().username} will die, choose 'Rev' or 'Kill Someone'`,
+                content: `${this.getPlayerById('869927501634359357').getName().username} will die, choose 'Save' or 'Kill Someone'`,
                 components: [buttonWitch]
             });
-            // await this.sleepTime(10000);
-            await this.countDown(30, "Thời gian bình chọn còn lại");
-            await this.handleKill();
-            await this.handleRev();
-            await this.getListPlayerss();
-            await this.clear();
+
+            await this.countDown(10, "Thời gian bình chọn còn lại");
+            await this.handleKill(); // Handle kill
+            await this.handleRev(); // Rev
+            await this.getListPlayerss(); // Display all players is live
+            await this.clear(); // Reset All List (Kill, Rev)
+            let content: string = "";
+            let emojis: string[] = [];
+
+            //Vote phase of village
+            await this.listPlayer.forEach((each, index) => {
+                if (each.getState()) {
+                    content += `${this.listEmoji[index]}: ${each.getName().username}\n`
+                    emojis.push(this.listEmoji[index])
+                }
+            })
+            const embed = new EmbedBuilder()
+                .setColor(0x0099FF)
+                .setTitle("Chọn người chơi để treo cổ")
+                .setDescription(`${content}`);
+            const voteMsg = await this.bot.channel.send({
+                embeds: [embed],
+                fetchReply: true
+            })
+                .then(async (emb: any) => {
+                    await emojis.forEach((each: string) => {
+                        emb.react(`${each}`);
+                    })
+                });
+
+            //Check vote to kill
+            await voteMsg.awaitReactions({time: 12000})
+                .then(async (collected: any) => {
+                    console.log(collected);
+                })
+            await this.countDown(120, "Thời gian thảo luận của dân làng");
+
         }
     }
 
