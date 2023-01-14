@@ -3,8 +3,8 @@ const moment = require('moment');
 const {GuildScheduledEventEntityType} = require("discord-api-types/v8");
 
 const command = {
-    normalCom: (client) => {
-        client.on(Events.MessageReactionAdd, async (reaction, user) => {
+    normalCom: (client: any) => {
+        client.on(Events.MessageReactionAdd, async (reaction: any, user: any) => {
             // When a reaction is received, check if the structure is partial
             if (reaction.partial) {
                 // If the message this reaction belongs to was removed, the fetching might result in an API error which should be handled
@@ -23,7 +23,7 @@ const command = {
             // The reaction is now also fully available and the properties will be reflected accurately:
             console.log(`${reaction.count} user(s) have given the same reaction to this message!`);
         });
-        client.on('messageCreate', async (msg) => {
+        client.on('messageCreate', async (msg: any) => {
             const commandName = msg.content;
             if (commandName.toLowerCase() === '$hello') {
                 await msg.reply(`Good morning ${msg.author.username}!`);
@@ -39,26 +39,6 @@ const command = {
                     content: `\`\`\`Your name: ${msg.author.tag}\nAdmin: ${checkAdmin ? "True" : "False"} \nMention:${msg.author}\nYour id: ${msg.author.id}\nCreated at: ${moment(msg.author.createdAt).format("ll")}\nYour avatar:\`\`\``,
                     files: [imageURL],
                 });
-
-            } else if (commandName === "$startGame") {
-                const a = new Game([
-                    {name: 'Tri', role: '', id: '1'},
-                    {name: 'Tu', role: '', id: '2'},
-                    {name: 'Thong', role: '', id: '3'},
-                    {name: 'Dung', role: '', id: '4'},
-                    {name: 'Huy', role: '', id: '5'},
-                    {name: 'Mai', role: '', id: '6'}
-                ]);
-                let ans = "";
-                [
-                    {name: 'Tri', role: '', id: '1'},
-                    {name: 'Tu', role: '', id: '2'},
-                    {name: 'Thong', role: '', id: '3'},
-                    {name: 'Dung', role: '', id: '4'},
-                    {name: 'Huy', role: '', id: '5'},
-                    {name: 'Mai', role: '', id: '6'}
-                ].map(each => ans += each.name)
-                await msg.reply(ans);
             } else if (commandName === '$dis') {
                 await msg.member.voice.disconnect();
             } else if (commandName.split(' ')[0] === '$lich') {
@@ -106,15 +86,15 @@ const command = {
                 const a = "https://stream.nixcdn.com/Sony_Audio59/NeverGonnaGiveYouUp-RickAstley-5890955.mp3?st=OLR48deuiWZTedRu3PUT8w&e=1662707548&t=1662621108041";
                 await msg.channel.send({content: "I'm coming back...", files: [im, a]});
             } else if (commandName === "$test") {
-                const message = await msg.reply({ content: 'Awaiting emojis...', fetchReply: true });
+                const message = await msg.reply({content: 'Awaiting emojis...', fetchReply: true});
                 message.react('👍').then(() => message.react('👎'));
 
-                const filter = (reaction, user) => {
+                const filter = (reaction: any, user: any) => {
                     return ['👍', '👎'].includes(reaction.emoji.name);
                 };
 
-                message.awaitReactions({  max: 20, time: 20000, errors: ['time'] })
-                    .then(collected => {
+                message.awaitReactions({max: 20, time: 20000, errors: ['time']})
+                    .then((collected: any) => {
                         const reaction = collected.first();
                         console.dir(reaction);
                         if (reaction.emoji.name === '👍') {
@@ -123,7 +103,7 @@ const command = {
                             msg.channel.send('You reacted with a thumbs down.');
                         }
                     })
-                    .catch(collected => {
+                    .catch((collected: any) => {
                         console.log(`Game có ${collected.size} người chơi`);
                         msg.channel.send('You didn\'t react with neither a thumbs up, nor a thumbs down.');
                     });
