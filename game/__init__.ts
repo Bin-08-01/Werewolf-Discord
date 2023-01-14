@@ -150,25 +150,26 @@ export class Init {
         return await this.listPlayer.find(player => player.role === role);
     }
 
-    countGood() {
-        let quan = 0;
-        this.listPlayer.forEach(each => {
-            if (each.getLegit()) {
-                quan++;
-            }
-        })
-        return quan;
-    }
 
     getPlayerById(id: string): typeof Player {
         const player = this.listPlayer.filter(each => each.getId() === id);
         return player[0];
     }
 
-    countEvil() {
+    async countGood() {
         let quan = 0;
-        this.listPlayer.forEach(each => {
-            if (!each.getLegit()) {
+        await this.listPlayer.forEach(each => {
+            if (each.getState() && each.getLegit()) {
+                quan++;
+            }
+        })
+        return quan;
+    }
+
+    async countEvil() {
+        let quan = 0;
+        await this.listPlayer.forEach(each => {
+            if (each.getState() && !each.getLegit()) {
                 quan++;
             }
         })
@@ -178,11 +179,18 @@ export class Init {
     async clear() {
         this.queueRev = [];
         this.queueKill = [];
+        this.queueKillCertain = [];
         this.killByWolf = '';
     }
 
-    checkFinish() {
-        return this.countEvil() >= this.countGood();
+    async checkFinish() {
+        if (await this.countEvil() >= await this.countGood()) {
+            return "Soi thang";
+        } else if (await this.countEvil() === 0) {
+            return "Dan thang";
+        } else {
+            return "Continue";
+        }
     }
 
     sleepTime(second = 0) {
@@ -234,10 +242,11 @@ export class Init {
         })
     }
 
+
     async start() {
         while (true) {
-            const players = this.listPlayer;
-
+            this.checkFinish();
+            // const players = this.listPlayer;
             //===================Bodyguard=======================
             const listProtected = await this.initSelectOption('guard');
             let playerRole = await this.findRole('bodyguard');
@@ -299,30 +308,53 @@ export class Init {
                 embeds: [embed],
                 fetchReply: true
             })
-                .then(async (emb: any) => {
-                    await emojis.forEach((each: string) => {
-                        emb.react(`${each}`);
-                    })
-                });
+            await emojis.forEach((each: string) => {
+                voteMsg.react(`${each}`);
+            })
 
             //Check vote to kill
-            await voteMsg.awaitReactions({time: 12000})
+            const players = await this.getListPlayerss();
+            voteMsg.awaitReactions({time: 10000})
                 .then(async (collected: any) => {
-                    console.log(collected);
+                    let index = 0;
+                    let max = 0;
+                    await collected.forEach(async (each: any) => {
+                        if (each.count > max) {
+                            this.queueKillCertain.splice(0);
+                            this.queueKillCertain.push(players[index].getId());
+                            max = each.count;
+                        } else if (each.count === max) {
+                            this.queueKillCertain.push(players[index].getId());
+                        }
+                        index++;
+                    })
                 })
-            await this.countDown(120, "Thời gian thảo luận của dân làng");
-
+            await this.countDown(20, "Thời gian thảo luận của dân làng");
+            if (await this.queueKillCertain.length === 1) {
+                await this.handleKill();
+            }
+            await this.clear();
+            if (await this.checkFinish() === "Dan thang") {
+                await this.bot.reply("Dân thắng !!!");
+                break;
+            } else if (await this.checkFinish() === "Soi thang") {
+                await this.bot.reply("Sói thắng !!!");
+                break;
+            }
         }
     }
 
     getListPlayerss = async () => {
         let a = '';
-        await this.listPlayer.forEach(each => {
-            if (each.getState()) {
+        const rs: any[] = [];
+        await this.listPlayer.forEach(async (each: any) => {
+            if (each.getState() === true) {
                 a += each.getName().username + ", role =" + each.getRole() + "\n";
+                await rs.push(each);
             }
         })
         this.bot.channel.send(a);
+        return rs;
     }
 
 }
