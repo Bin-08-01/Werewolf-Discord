@@ -1,10 +1,10 @@
-const { PermissionFlagsBits } = require('discord.js');
+import { PermissionFlagsBits } from 'discord.js';
 const moment = require('moment');
 
 
 const splashCommands = {
-    slashCommand: (client) => {
-        client.on('interactionCreate', async interaction => {
+    slashCommand: (client: any) => {
+        client.on('interactionCreate', async (interaction: any) => {
 
             if (!interaction.isChatInputCommand()) return;
 
@@ -31,7 +31,7 @@ const splashCommands = {
             }
             else if (commandName === 'exit') {
                 await interaction.guild.members.kick(`${interaction.user.id}`)
-                    .then(kickInfo => console.log(`Kicked ${kickInfo.user?.tag ?? kickInfo.tag ?? kickInfo}`))
+                    .then((kickInfo: any) => console.log(`Kicked ${kickInfo.user?.tag ?? kickInfo.tag ?? kickInfo}`))
                     .catch(console.error);
             }
             else if(commandName === 'kick') {
