@@ -120,7 +120,7 @@ export class Init {
     }
 
     setRole = async () => {
-        await this.listAttend.sort(() => Math.random() - 0.5);
+        this.listAttend.sort(() => Math.random() - 0.5);
         for (let i = 0; i < this.listAttend.length; i++) {
             const each: any = this.listRole[i];
             const player: any = this.listAttend[i];
@@ -142,12 +142,12 @@ export class Init {
                     break;
             }
         }
-        await this.listPlayer.sort(() => Math.random() - 0.5);
+        this.listPlayer.sort(() => Math.random() - 0.5);
     }
 
 
     async findRole(role: string) {
-        return await this.listPlayer.find(player => player.role === role);
+        return await this.listPlayer.find(player => player.getRole() === role);
     }
 
 
@@ -242,10 +242,16 @@ export class Init {
         })
     }
 
+    seerAction = async (idPlayer: string) => {
+        const seer = await this.findRole('seer');
+        console.log(seer);
+        const player = this.getPlayerById(idPlayer);
+        // await this.client.users.fetch(seer.getId(), false).then((user: any)=> user.send(`${player.getName()} là ${player.getRole()}`));
+    }
 
     async start() {
         while (true) {
-            this.checkFinish();
+            await this.checkFinish();
             // const players = this.listPlayer;
             //===================Bodyguard=======================
             const listProtected = await this.initSelectOption('guard');
@@ -253,6 +259,12 @@ export class Init {
             // await this.client.users.fetch(playerRole.getId(), false)
             //     .then(async (user: any) => await user.send("Bạn là bảo vệ đó, hãy vào để chọn người để bảo vệ nào"));
             await this.bot.channel.send({content: 'Bạn muốn chọn ai để bảo vệ đêm nay: ', components: [listProtected]});
+            await this.countDown(10, "Thời gian bình chọn còn lại");
+
+            //===================Seer============================
+            const seer = await this.findRole('seer');
+            const listSeerPlayers = await this.initSelectOption('seer');
+            await this.bot.channel.send({content: 'Chọn người chơi để tiên tri: ', components: [listSeerPlayers]});
             await this.countDown(10, "Thời gian bình chọn còn lại");
 
             //====================Wolf============================
@@ -347,12 +359,12 @@ export class Init {
     getListPlayerss = async () => {
         let a = '';
         const rs: any[] = [];
-        await this.listPlayer.forEach(async (each: any) => {
+        this.listPlayer.forEach(async (each: any) => {
             if (each.getState() === true) {
                 a += each.getName().username + ", role =" + each.getRole() + "\n";
                 await rs.push(each);
             }
-        })
+        })////
         this.bot.channel.send(a);
         return rs;
     }
