@@ -1,4 +1,11 @@
-import {ActionRowBuilder, Events, StringSelectMenuBuilder} from "discord.js";
+import {
+    ActionRowBuilder,
+    ChannelType,
+    Events,
+    Permissions,
+    PermissionsBitField,
+    StringSelectMenuBuilder
+} from "discord.js";
 import {Init} from "../../game/__init__"
 
 let game: any;
@@ -11,6 +18,30 @@ export const wolfGameCmd = {
             switch (message) {
                 case '$wolf':
                     await startGame(interaction, client);
+                    break;
+                case '$new-text':
+                        const temp = await interaction.guild.channels.create({
+                            name: "newchannel",
+                            type: ChannelType.GuildText,
+                            permissionOverwrites: [
+                                {
+                                    id: interaction.guild.id,
+                                    deny: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages]
+                                }
+                            ]
+                        })
+                    break;
+                case '$new-voice':
+                    await interaction.guild.channels.create({
+                        name: "werewolf-voice",
+                        type: ChannelType.GuildVoice,
+                        permissionOverwrites: [
+                            {
+                                id: interaction.guild.id,
+                                deny: [PermissionsBitField.All]
+                            }
+                        ]
+                    })
                     break;
             }
         })
